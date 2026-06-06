@@ -56,4 +56,19 @@
           SkipUnchangedFiles="true" />
   </Target>
 
+  <!--
+    Bundles the native XInput proxy (built separately by native/build-proxy.cmd)
+    into an "XInputProxy" subfolder of the app output, if it has been built. The
+    app runs fine without it - controller isolation is simply reported as off.
+  -->
+  <Target Name="BundleXInputProxy" AfterTargets="Build">
+    <ItemGroup>
+      <ProxyFiles Include="$(MSBuildThisFileDirectory)..\..\native\bin\**\SplitPlay.XInputProxy.dll" />
+    </ItemGroup>
+    <Copy SourceFiles="@(ProxyFiles)"
+          DestinationFiles="@(ProxyFiles->'$(OutDir)XInputProxy\%(RecursiveDir)%(Filename)%(Extension)')"
+          SkipUnchangedFiles="true"
+          Condition="'@(ProxyFiles)' != ''" />
+  </Target>
+
 </Project>

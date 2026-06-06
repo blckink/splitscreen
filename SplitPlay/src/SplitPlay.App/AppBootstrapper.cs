@@ -6,6 +6,7 @@ using SplitPlay.Core.Abstractions;
 using SplitPlay.Core.Services;
 using SplitPlay.Input;
 using SplitPlay.Launch;
+using SplitPlay.Launch.InputIsolation;
 using SplitPlay.Steam;
 
 namespace SplitPlay.App;
@@ -28,9 +29,13 @@ public static class AppBootstrapper
         services.AddSingleton<ISplitLayoutCalculator, SplitLayoutCalculator>();
         services.AddSingleton<IGamepadService, XInputGamepadService>();
 
+        // Controller isolation (XInput proxy install/restore). Singleton so its
+        // restore-on-startup runs once and the app can restore on exit.
+        services.AddSingleton<InputIsolationManager>();
+
         // The launch engine. RealLaunchEngine launches the game (with a test-window
-        // fallback) and places the windows into the split. StubLaunchEngine remains
-        // available for a no-op preview if ever needed.
+        // fallback), isolates controller input per window and places the windows
+        // into the split. StubLaunchEngine remains available as a no-op preview.
         services.AddSingleton<ILaunchEngine, RealLaunchEngine>();
 
         // --- Shell + navigation ---

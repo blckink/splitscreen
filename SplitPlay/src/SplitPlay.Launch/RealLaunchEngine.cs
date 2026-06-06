@@ -7,18 +7,21 @@ using System.Threading;
 using System.Threading.Tasks;
 using SplitPlay.Core.Abstractions;
 using SplitPlay.Core.Models;
+using SplitPlay.Launch.InputIsolation;
 
 namespace SplitPlay.Launch;
 
 /// <summary>
-/// The MVP launch engine. It starts the game executable once per player, waits for
+/// The launch engine. It starts the game executable once per player, waits for
 /// each instance's window, makes it borderless and places it into the player's
-/// split region. If a second instance cannot produce its own window (a common
-/// single-instance restriction) or test mode is enabled, the affected slot falls
-/// back to a neutral SplitPlay test window so the split layout is always verifiable.
+/// split region. Each instance is launched through the XInput proxy
+/// (<see cref="InputIsolationManager"/>) so it only ever sees its assigned
+/// controller - one pad drives one window, even in the background, while keyboard
+/// and mouse stay free for the desktop.
 ///
-/// Not yet handled (next milestone): isolating controller input so one pad drives
-/// only one window. For now every window receives input from all pads.
+/// If a second instance cannot produce its own window (single-instance games) or
+/// test mode is on, the affected slot falls back to a SplitPlay test window so the
+/// split layout is always verifiable.
 /// </summary>
 public sealed class RealLaunchEngine : ILaunchEngine
 {
@@ -30,6 +33,12 @@ public sealed class RealLaunchEngine : ILaunchEngine
 
     private readonly WindowManager _windowManager = new();
     private readonly GameWindowLocator _locator = new();
+    private readonly InputIsolationManager _isolation;
+
+    public RealLaunchEngine(InputIsolationManager isolation)
+    {
+        _isolation = isolation;
+    }
 
     public async Task<LaunchResult> LaunchAsync(
         LaunchRequest request,
@@ -60,6 +69,10 @@ public sealed class RealLaunchEngine : ILaunchEngine
             : ExecutableResolver.Resolve(
                 request.Game.InstallDir, request.Game.Name, request.Profile.ExecutableOverride);
 
+        // Install the per-instance XInput proxy into the game folder (unless test
+        // mode, no exe, or the user turned isolation off).
+        var isolation = SetupIsolation(request, exePath);
+
         string? testTargetPath = ResolveTestTargetPath();
         var notes = new List<string>();
         var startedWindows = new List<IntPtr>();
@@ -79,7 +92,8 @@ public sealed class RealLaunchEngine : ILaunchEngine
             if (!testMode && exePath is not null)
             {
                 handle = await TryLaunchAndLocateAsync(
-                    StartGame(exePath), GameWindowTimeout, cancellationToken);
+                    StartGame(exePath, target.ControllerIndex, isolation.Applied),
+                    GameWindowTimeout, cancellationToken);
 
                 if (handle == IntPtr.Zero)
                 {
@@ -119,7 +133,39 @@ public sealed class RealLaunchEngine : ILaunchEngine
         }
 
         progress?.Report(new LaunchProgress(100, "Ready."));
-        return BuildResult(request, testMode, exePath, notes);
+        return BuildResult(request, testMode, exePath, notes, isolation);
+    }
+
+    /// <summary>
+    /// Installs the XInput proxy for this launch if applicable, and returns whether
+    /// it was applied plus a human-readable note for the result message.
+    /// </summary>
+    private IsolationOutcome SetupIsolation(LaunchRequest request, string? exePath)
+    {
+        if (request.Profile.UseTestWindows || exePath is null)
+        {
+            return new IsolationOutcome(false, null);
+        }
+
+        if (!request.Profile.IsolateControllers)
+        {
+            return new IsolationOutcome(false, "Controller isolation is disabled in this game's settings.");
+        }
+
+        ProcessArchitecture arch = PeArchitectureReader.Read(exePath);
+        if (!_isolation.IsProxyAvailable(arch))
+        {
+            return new IsolationOutcome(false,
+                "Controller isolation is OFF - the XInput proxy is not built yet " +
+                "(run native/build-proxy.cmd once).");
+        }
+
+        string exeDir = Path.GetDirectoryName(exePath)!;
+        bool applied = _isolation.Prepare(exeDir, arch);
+        return applied
+            ? new IsolationOutcome(true, "Controller input is isolated per window (one pad to one window).")
+            : new IsolationOutcome(false,
+                "Controller isolation could not be applied (could not write to the game folder).");
     }
 
     private async Task<IntPtr> TryLaunchAndLocateAsync(
@@ -133,16 +179,26 @@ public sealed class RealLaunchEngine : ILaunchEngine
         return await _locator.WaitForMainWindowAsync(process, timeout, cancellationToken);
     }
 
-    private static Process? StartGame(string exePath)
+    private static Process? StartGame(string exePath, int controllerIndex, bool isolated)
     {
         try
         {
-            return Process.Start(new ProcessStartInfo
+            // UseShellExecute must be false so we can set a per-process environment
+            // variable - that is how the proxy learns which pad this instance owns.
+            var startInfo = new ProcessStartInfo
             {
                 FileName = exePath,
                 WorkingDirectory = Path.GetDirectoryName(exePath) ?? string.Empty,
-                UseShellExecute = true
-            });
+                UseShellExecute = false
+            };
+
+            if (isolated)
+            {
+                startInfo.Environment[InputIsolationManager.EnvVarName] =
+                    controllerIndex.ToString();
+            }
+
+            return Process.Start(startInfo);
         }
         catch (Exception)
         {
@@ -211,7 +267,8 @@ public sealed class RealLaunchEngine : ILaunchEngine
     }
 
     private static LaunchResult BuildResult(
-        LaunchRequest request, bool testMode, string? exePath, List<string> notes)
+        LaunchRequest request, bool testMode, string? exePath,
+        List<string> notes, IsolationOutcome isolation)
     {
         string orientation = request.Profile.Orientation.ToString().ToLowerInvariant();
 
@@ -234,7 +291,14 @@ public sealed class RealLaunchEngine : ILaunchEngine
             message += " " + string.Join(" ", notes);
         }
 
-        message += " Note: controller input is not yet isolated per window.";
+        if (isolation.Note is not null)
+        {
+            message += " " + isolation.Note;
+        }
+
         return LaunchResult.Ok(message);
     }
+
+    /// <summary>Result of trying to set up controller isolation for a launch.</summary>
+    private readonly record struct IsolationOutcome(bool Applied, string? Note);
 }

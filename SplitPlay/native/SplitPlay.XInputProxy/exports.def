@@ -1,0 +1,12 @@
+; Export table for the SplitPlay XInput proxy. The names match the genuine XInput
+; DLLs so games resolve them transparently. XInputGetStateEx is exposed at the
+; well-known hidden ordinal 100 (some games import it only by ordinal).
+EXPORTS
+    XInputGetState
+    XInputSetState
+    XInputGetCapabilities
+    XInputEnable
+    XInputGetBatteryInformation
+    XInputGetKeystroke
+    XInputGetDSoundAudioDeviceGuids
+    XInputGetStateEx @100

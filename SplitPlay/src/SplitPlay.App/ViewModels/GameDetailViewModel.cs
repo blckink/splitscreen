@@ -42,6 +42,7 @@ public sealed class GameDetailViewModel : PageViewModel
     private string _regionInfoP1 = string.Empty;
     private string _regionInfoP2 = string.Empty;
     private bool _useTestWindows;
+    private bool _isolateControllers = true;
     private int _progress;
     private bool _isLaunching;
 
@@ -156,6 +157,22 @@ public sealed class GameDetailViewModel : PageViewModel
         }
     }
 
+    /// <summary>
+    /// When on (default), each instance only receives its assigned controller via
+    /// the XInput proxy. Keyboard and mouse are never affected.
+    /// </summary>
+    public bool IsolateControllers
+    {
+        get => _isolateControllers;
+        set
+        {
+            if (SetProperty(ref _isolateControllers, value))
+            {
+                PersistProfile();
+            }
+        }
+    }
+
     /// <summary>Latest status / result message shown beneath the Start button.</summary>
     public string StatusText
     {
@@ -198,6 +215,7 @@ public sealed class GameDetailViewModel : PageViewModel
             // Restore saved settings.
             Orientation = _profile.Orientation;
             UseTestWindows = _profile.UseTestWindows;
+            IsolateControllers = _profile.IsolateControllers;
             RestoreControllerSelections();
             UpdateRegionInfo();
 
@@ -302,6 +320,7 @@ public sealed class GameDetailViewModel : PageViewModel
 
         _profile.Orientation = Orientation;
         _profile.UseTestWindows = UseTestWindows;
+        _profile.IsolateControllers = IsolateControllers;
         _profile.TargetDisplayIndex =
             SelectedDisplay is null ? null : Displays.IndexOf(SelectedDisplay);
 

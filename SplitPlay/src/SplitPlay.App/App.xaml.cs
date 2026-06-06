@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using SplitPlay.App.ViewModels;
 using SplitPlay.App.Views;
 using SplitPlay.Core.Abstractions;
+using SplitPlay.Launch.InputIsolation;
 
 namespace SplitPlay.App;
 
@@ -26,6 +27,10 @@ public partial class App : Application
         // Begin watching for controller connect/disconnect for the whole session.
         _provider.GetRequiredService<IGamepadService>().StartMonitoring();
 
+        // Eagerly create the isolation manager so any proxy DLLs left in game
+        // folders by a previously crashed session are restored right away.
+        _provider.GetRequiredService<InputIsolationManager>();
+
         var window = _provider.GetRequiredService<MainWindow>();
         var shell = _provider.GetRequiredService<MainViewModel>();
         window.DataContext = shell;
@@ -37,6 +42,10 @@ public partial class App : Application
 
     protected override void OnExit(ExitEventArgs e)
     {
+        // Restore any game folders we shadowed with the XInput proxy. Folders whose
+        // game is still running stay recorded and are restored on the next start.
+        _provider?.GetService<InputIsolationManager>()?.RestoreAll();
+
         // Disposes singletons, including the gamepad service (stops its timer).
         _provider?.Dispose();
         base.OnExit(e);

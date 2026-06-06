@@ -166,9 +166,15 @@
                         </Viewbox>
                     </Border>
 
+                    <!-- Controller isolation -->
+                    <CheckBox Content="Isolate controllers (one pad per window)"
+                              IsChecked="{Binding IsolateControllers}" Margin="0,16,0,0"
+                              Foreground="{StaticResource TextSecondaryBrush}"
+                              ToolTip="Each instance only sees its assigned controller. Keyboard and mouse stay free." />
+
                     <!-- Test mode -->
                     <CheckBox Content="Test mode (open placeholder windows, don't launch the game)"
-                              IsChecked="{Binding UseTestWindows}" Margin="0,16,0,0"
+                              IsChecked="{Binding UseTestWindows}" Margin="0,8,0,0"
                               Foreground="{StaticResource TextSecondaryBrush}" />
 
                     <!-- Start -->

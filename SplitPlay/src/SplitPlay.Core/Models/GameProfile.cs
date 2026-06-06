@@ -51,6 +51,13 @@ public sealed class GameProfile
     /// </summary>
     public bool UseTestWindows { get; set; }
 
+    /// <summary>
+    /// When true (default), each game instance is launched through the XInput proxy
+    /// so it only sees its assigned controller. Can be turned off for the rare game
+    /// that misbehaves with the proxy.
+    /// </summary>
+    public bool IsolateControllers { get; set; } = true;
+
     /// <summary>Creates a fresh profile with default settings for an app id.</summary>
     public static GameProfile CreateDefault(uint appId) => new() { AppId = appId };
 }

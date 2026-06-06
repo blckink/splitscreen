@@ -8,15 +8,18 @@ fork lives under `../Master` as reference). The goals are a friendlier UI, a
 modular and individually-updatable codebase, and **per-game configuration through
 the interface** instead of downloading and managing handler script files.
 
-> Status: **Testable MVP.** Scanning, the full UI, controller detection + rumble
-> test, and per-game profiles work. **Start** launches the game executable twice,
-> finds each window, makes it borderless and tiles it into the chosen split on the
-> chosen display; if a second instance can't get its own window (single-instance
-> games) the affected half falls back to a SplitPlay **test window**. A **Test
-> mode** opens placeholder windows only, to verify layout safely.
+> Status: **Testable MVP with per-window controller isolation.** Scanning, the full
+> UI, controller detection + rumble test, and per-game profiles work. **Start**
+> launches the game executable twice, finds each window, makes it borderless and
+> tiles it into the chosen split. Each instance runs behind a **per-instance XInput
+> proxy** so it only sees its assigned controller (one pad → one window, even in
+> the background); **keyboard and mouse stay free** for the desktop. Single-instance
+> games fall back per-slot to a SplitPlay **test window**; a **Test mode** opens
+> placeholder windows only, to verify layout safely.
 >
-> Not yet done (next milestone): **isolating controller input per window** (one pad
-> → one window). Today both windows receive input from all pads.
+> The XInput proxy is a small native DLL that must be built once - see
+> [Building the XInput proxy](#building-the-xinput-proxy). Without it the app still
+> runs; it just reports isolation as off.
 
 ## Scope (MVP)
 
@@ -48,6 +51,8 @@ updated on its own. Dependencies only ever point *toward* `Core`.
 SplitPlay/
 ├─ SplitPlay.sln
 ├─ Directory.Build.props        # shared compiler settings
+├─ native/                      # native XInput proxy (C++), built via build-proxy.cmd
+│  └─ SplitPlay.XInputProxy/    # proxy.cpp, exports.def, .vcxproj
 └─ src/
    ├─ SplitPlay.Core/           # Models/, Abstractions/, Services/
    ├─ SplitPlay.Steam/          # Vdf/, scanner, artwork
@@ -72,6 +77,13 @@ SplitPlay/
   never produce a horizontal scrollbar.
 - **Pixel-accurate layout.** The app is Per-Monitor-v2 DPI aware; the pure
   `SplitLayoutCalculator` tiles a monitor's bounds exactly (no rounding gaps).
+- **Per-window controller isolation.** A native XInput proxy DLL
+  (`native/SplitPlay.XInputProxy`) is dropped into the game folder (originals are
+  backed up and restored). Each instance is launched with the
+  `SPLITPLAY_XINPUT_INDEX` env var, so the proxy exposes only that one physical pad
+  as index 0 and reports the rest as disconnected. This works at the API level, so
+  it holds even when a window is in the background, and it never touches keyboard or
+  mouse. `InputIsolationManager` handles install/backup and crash-safe restore.
 
 ## How a session is configured
 
@@ -83,8 +95,8 @@ SplitPlay/
 
 ## Roadmap (next)
 
-- **Per-instance controller isolation** (the key next step): make one pad drive
-  only one window (custom XInput shim / input redirection per instance).
+- Isolation fallback via runtime injection for the rare games that load XInput in
+  a way the folder proxy can't shadow (e.g. a hardcoded System32 path).
 - Instance lifecycle: track launched processes, clean teardown, relaunch.
 - Smarter executable/second-instance handling (read Steam launch config; handle
   launcher→game hand-off; single-instance mutex strategies).
@@ -102,3 +114,17 @@ folder:
 dotnet build SplitPlay.sln
 dotnet run --project src/SplitPlay.App/SplitPlay.App.csproj
 ```
+
+### Building the XInput proxy
+
+Controller isolation needs the small native proxy DLL. This requires the
+**"Desktop development with C++"** workload (or the standalone C++ Build Tools).
+Build it once (re-run only if `proxy.cpp` changes):
+
+```cmd
+native\build-proxy.cmd
+```
+
+This produces `native\bin\x64\SplitPlay.XInputProxy.dll` and the x86 variant. The
+app build copies them into its output automatically. If the proxy is missing the
+app still runs - it just reports controller isolation as off.
