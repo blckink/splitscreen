@@ -53,6 +53,7 @@ SplitPlay/
 ├─ Directory.Build.props        # shared compiler settings
 ├─ native/                      # native XInput proxy (C++), built via build-proxy.cmd
 │  └─ SplitPlay.XInputProxy/    # proxy.cpp, exports.def, .vcxproj
+├─ installer/                   # one-command release: build-release.cmd -> SplitPlaySetup.exe
 └─ src/
    ├─ SplitPlay.Core/           # Models/, Abstractions/, Services/
    ├─ SplitPlay.Steam/          # Vdf/, scanner, artwork
@@ -106,6 +107,16 @@ SplitPlay/
 - More than two players, richer controller info (battery/live input), themes.
 
 ## Building
+
+### Easiest: one-command installer
+
+Double-click **`installer\build-release.cmd`**. It auto-installs every needed
+tool (via `winget`: .NET 8 SDK, Visual C++ Build Tools, Inno Setup), builds the
+native proxy, publishes the app self-contained and produces a single
+**`installer\output\SplitPlaySetup.exe`**. That setup needs no tools, no .NET and
+no C++ runtime on the target PC. See [installer/README.md](installer/README.md).
+
+### From source (development)
 
 Requires the **.NET 8 SDK** and **Windows** (WPF + Win32). From the `SplitPlay`
 folder:
