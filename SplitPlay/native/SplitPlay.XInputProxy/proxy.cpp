@@ -45,6 +45,9 @@ typedef DWORD(WINAPI* PFN_GetBattery)(DWORD, BYTE, XINPUT_BATTERY_INFORMATION*);
 typedef DWORD(WINAPI* PFN_GetKeystroke)(DWORD, DWORD, PXINPUT_KEYSTROKE);
 typedef DWORD(WINAPI* PFN_GetDSoundGuids)(DWORD, GUID*, GUID*);
 
+extern "C" DWORD WINAPI XInputGetState(DWORD dwUserIndex, XINPUT_STATE* pState);
+extern "C" DWORD WINAPI XInputGetStateEx(DWORD dwUserIndex, XINPUT_STATE* pState);
+
 static volatile LONG g_initState = 0;       // 0 = uninit, 1 = initializing, 2 = ready
 static DWORD         g_assignedIndex = 0;    // physical pad exposed as index 0
 static HMODULE       g_real = NULL;
@@ -186,6 +189,18 @@ static void EnsureInit()
         p_GetBattery = (PFN_GetBattery)GetProcAddress(g_real, "XInputGetBatteryInformation");
         p_GetKeystroke = (PFN_GetKeystroke)GetProcAddress(g_real, "XInputGetKeystroke");
         p_GetDSoundGuids = (PFN_GetDSoundGuids)GetProcAddress(g_real, "XInputGetDSoundAudioDeviceGuids");
+    }
+
+    // MinHook the genuine XInput module. Unity uses GetProcAddress("xinput1_4.dll", ...)
+    // internally. If it finds it and caches the real function pointers, it completely bypasses
+    // our proxy's exported functions. So we must inline hook them inside the loaded system dll.
+    MH_Initialize();
+    if (g_real != NULL)
+    {
+        void* pGet = (void*)GetProcAddress(g_real, "XInputGetState");
+        if (pGet) { MH_CreateHook(pGet, (void*)XInputGetState, (void**)&p_GetState); MH_EnableHook(pGet); }
+        void* pGetEx = (void*)GetProcAddress(g_real, (LPCSTR)MAKEINTRESOURCE(100));
+        if (pGetEx) { MH_CreateHook(pGetEx, (void*)XInputGetStateEx, (void**)&p_GetStateEx); MH_EnableHook(pGetEx); }
     }
 
     char init[300];
