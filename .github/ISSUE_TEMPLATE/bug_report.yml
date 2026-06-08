@@ -1,0 +1,55 @@
+name: "🐛 Bug report"
+description: Something in SplitPlay is broken or behaving weirdly.
+title: "🐛 <short description>"
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: "Thanks for reporting! Please search existing issues first so we don't end up with twins."
+
+  - type: checkboxes
+    attributes:
+      label: I searched existing issues and this isn't a duplicate.
+      options:
+        - label: Confirmed
+          required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened?
+      description: What went wrong, and what did you expect instead? Screenshots/logs welcome.
+    validations:
+      required: true
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      description: The exact clicks. "Open app → pick game X → vertical split → Start → ..."
+    validations:
+      required: true
+
+  - type: input
+    id: game
+    attributes:
+      label: Game (and Steam App ID if known)
+      placeholder: "e.g. Some Co-op Game (App ID 12345)"
+
+  - type: dropdown
+    id: isolation
+    attributes:
+      label: Was controller isolation reported as ON?
+      description: The app tells you whether the native XInput proxy is active.
+      options:
+        - "Yes — isolation ON"
+        - "No — isolation OFF (proxy missing)"
+        - "Not sure"
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Windows version, controllers used, number of monitors + scaling, SplitPlay version.
+    validations:
+      required: true

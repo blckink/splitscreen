@@ -1,3 +1,0 @@
-Start arguments: -0 = process Id to hook.
-                 -1 = X86 dll hook dll to inject.
-                 -2 = X64 dll hook dll to inject.

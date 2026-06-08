@@ -1,0 +1,49 @@
+name: "🎮 Game compatibility report"
+description: Tell us whether SplitPlay works (or doesn't) on a specific game. This is the most useful thing you can file.
+title: "🎮 <game name> — works / doesn't work"
+labels: ["game-report"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        SplitPlay has been verified on a tiny number of games so far. Your report
+        directly moves that number. Thank you. ❤️
+
+  - type: input
+    id: game
+    attributes:
+      label: Game name + Steam App ID
+      placeholder: "e.g. Some Co-op Game (App ID 12345)"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: result
+    attributes:
+      label: Result
+      options:
+        - "✅ Fully playable split-screen"
+        - "🟡 Launches/tiles but has issues"
+        - "❌ Doesn't work"
+    validations:
+      required: true
+
+  - type: textarea
+    id: details
+    attributes:
+      label: What worked, what didn't
+      description: Did both instances launch? Were they tiled correctly? Did each pad control only its own window? Any crashes?
+    validations:
+      required: true
+
+  - type: textarea
+    id: settings
+    attributes:
+      label: Settings you used
+      description: Split orientation, display, controller routing, single-account vs. two accounts.
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Windows version, controllers, monitors + scaling, whether isolation was reported ON.

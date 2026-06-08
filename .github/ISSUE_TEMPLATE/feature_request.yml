@@ -1,0 +1,30 @@
+name: "✨ Feature request"
+description: Suggest an improvement or a new capability for SplitPlay.
+title: "✨ <short description>"
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: "Peek at the [Roadmap](../../blob/HEAD/README.md#roadmap) first — your idea might already be on it."
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem does this solve?
+      description: Describe the pain point, not just the solution. "When I X, I have to Y, which is annoying because Z."
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: What would you like SplitPlay to do?
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Anything you tried or thought about that didn't quite cut it.
