@@ -18,22 +18,6 @@ public enum StoreCoopFilter
     SplitScreen
 }
 
-/// <summary>An optional genre filter. <see cref="All"/> applies no genre tag.</summary>
-public enum StoreGenre
-{
-    All,
-    Action,
-    Adventure,
-    Rpg,
-    Strategy,
-    Simulation,
-    Indie,
-    Casual,
-    Racing,
-    Sports,
-    MassivelyMultiplayer
-}
-
 /// <summary>How to order the store search results.</summary>
 public enum StoreSortOrder
 {
@@ -52,7 +36,9 @@ public enum StoreSortOrder
 
 /// <summary>
 /// The parameters for one store-search request. Immutable; the view model builds a
-/// fresh query whenever the filters or paging change.
+/// fresh query whenever the filters or paging change. <see cref="Tags"/> carries the
+/// numeric Steam tag ids for the selected genre / subgenre / visual style (combined
+/// with AND on the store), leaving the view model free to decide how those map.
 /// </summary>
 public sealed class StoreSearchQuery
 {
@@ -61,7 +47,8 @@ public sealed class StoreSearchQuery
 
     public StoreCoopFilter Coop { get; init; } = StoreCoopFilter.OnlineCoop;
 
-    public StoreGenre Genre { get; init; } = StoreGenre.All;
+    /// <summary>Steam tag ids to AND into the search (genre, subgenre, visual, ...).</summary>
+    public IReadOnlyList<int> Tags { get; init; } = new List<int>();
 
     public StoreSortOrder Sort { get; init; } = StoreSortOrder.TopReviews;
 

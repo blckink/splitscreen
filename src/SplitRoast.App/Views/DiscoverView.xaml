@@ -3,7 +3,6 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:conv="clr-namespace:SplitRoast.App.Converters"
              xmlns:vm="clr-namespace:SplitRoast.App.ViewModels"
-             xmlns:models="clr-namespace:SplitRoast.Core.Models;assembly=SplitRoast.Core"
              d:DataContext="{d:DesignInstance Type=vm:DiscoverViewModel}"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              mc:Ignorable="d"
@@ -14,7 +13,7 @@
         <BooleanToVisibilityConverter x:Key="BoolToVis" />
         <conv:InverseBooleanToVisibilityConverter x:Key="InverseBoolToVis" />
         <conv:SuitabilityToBrushConverter x:Key="SuitBrush" />
-        <conv:EqualityToBooleanConverter x:Key="Equality" />
+        <conv:ReviewToneToBrushConverter x:Key="ReviewBrush" />
 
         <!-- Tile button: chrome-less so the whole capsule is clickable, with a hover
              lift (accent border + slight scale) - matched to the library grid. -->
@@ -75,22 +74,20 @@
         </Grid.RowDefinitions>
 
         <!-- ===================== Heading + filter bar ===================== -->
-        <StackPanel Grid.Row="0" Margin="9,0,0,14">
+        <StackPanel Grid.Row="0" Margin="9,0,0,12">
             <TextBlock Text="Discover co-op games" Style="{StaticResource PageTitleStyle}" />
             <TextBlock Text="Find more Steam games with online or LAN co-op to bring into split-screen."
                        Margin="0,4,0,0" FontSize="13"
                        Foreground="{StaticResource TextSecondaryBrush}" />
 
-            <!-- Search + sort row -->
-            <Grid Margin="0,16,0,0">
+            <!-- Search + result count -->
+            <Grid Margin="0,16,0,2">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
 
-                <!-- Search box -->
-                <Border Grid.Column="0" Width="300" Height="34" CornerRadius="6"
+                <Border Grid.Column="0" Width="320" Height="34" CornerRadius="6"
                         VerticalAlignment="Center"
                         Background="{StaticResource SurfaceBrush}"
                         BorderBrush="{StaticResource BorderBrush}" BorderThickness="1">
@@ -130,124 +127,48 @@
                     </Grid>
                 </Border>
 
-                <!-- Result count -->
                 <TextBlock Grid.Column="1" Text="{Binding ResultSummary}" Margin="16,0,0,0"
                            VerticalAlignment="Center" FontSize="12.5"
                            Foreground="{StaticResource TextSecondaryBrush}" />
-
-                <!-- Sort chips -->
-                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
-                    <Button Content="Top reviews" Style="{StaticResource FilterChipStyle}"
-                            Command="{Binding SelectSortCommand}"
-                            CommandParameter="{x:Static models:StoreSortOrder.TopReviews}"
-                            Tag="{Binding SelectedSort, Converter={StaticResource Equality},
-                                  ConverterParameter={x:Static models:StoreSortOrder.TopReviews}}" />
-                    <Button Content="Newest" Style="{StaticResource FilterChipStyle}"
-                            Command="{Binding SelectSortCommand}"
-                            CommandParameter="{x:Static models:StoreSortOrder.Newest}"
-                            Tag="{Binding SelectedSort, Converter={StaticResource Equality},
-                                  ConverterParameter={x:Static models:StoreSortOrder.Newest}}" />
-                    <Button Content="Relevance" Style="{StaticResource FilterChipStyle}"
-                            Command="{Binding SelectSortCommand}"
-                            CommandParameter="{x:Static models:StoreSortOrder.Relevance}"
-                            Tag="{Binding SelectedSort, Converter={StaticResource Equality},
-                                  ConverterParameter={x:Static models:StoreSortOrder.Relevance}}" />
-                    <Button Content="A–Z" Style="{StaticResource FilterChipStyle}"
-                            Command="{Binding SelectSortCommand}"
-                            CommandParameter="{x:Static models:StoreSortOrder.NameAsc}"
-                            Tag="{Binding SelectedSort, Converter={StaticResource Equality},
-                                  ConverterParameter={x:Static models:StoreSortOrder.NameAsc}}" />
-                </StackPanel>
             </Grid>
 
-            <!-- Co-op type chips -->
-            <StackPanel Orientation="Horizontal" Margin="0,14,0,0">
-                <TextBlock Text="CO-OP" Style="{StaticResource SectionLabelStyle}"
-                           VerticalAlignment="Center" Margin="0,0,12,0" Width="58" />
-                <Button Content="Online co-op" Style="{StaticResource FilterChipStyle}"
-                        Command="{Binding SelectCoopCommand}"
-                        CommandParameter="{x:Static models:StoreCoopFilter.OnlineCoop}"
-                        Tag="{Binding SelectedCoop, Converter={StaticResource Equality},
-                              ConverterParameter={x:Static models:StoreCoopFilter.OnlineCoop}}" />
-                <Button Content="LAN co-op" Style="{StaticResource FilterChipStyle}"
-                        Command="{Binding SelectCoopCommand}"
-                        CommandParameter="{x:Static models:StoreCoopFilter.LanCoop}"
-                        Tag="{Binding SelectedCoop, Converter={StaticResource Equality},
-                              ConverterParameter={x:Static models:StoreCoopFilter.LanCoop}}" />
-                <Button Content="Any co-op" Style="{StaticResource FilterChipStyle}"
-                        Command="{Binding SelectCoopCommand}"
-                        CommandParameter="{x:Static models:StoreCoopFilter.AnyCoop}"
-                        Tag="{Binding SelectedCoop, Converter={StaticResource Equality},
-                              ConverterParameter={x:Static models:StoreCoopFilter.AnyCoop}}" />
-                <Button Content="Split-screen" Style="{StaticResource FilterChipStyle}"
-                        Command="{Binding SelectCoopCommand}"
-                        CommandParameter="{x:Static models:StoreCoopFilter.SplitScreen}"
-                        Tag="{Binding SelectedCoop, Converter={StaticResource Equality},
-                              ConverterParameter={x:Static models:StoreCoopFilter.SplitScreen}}" />
-            </StackPanel>
+            <!-- Filter dropdowns (wrap so they never overflow the width) -->
+            <WrapPanel Orientation="Horizontal" Margin="0,12,0,0">
+                <WrapPanel.Resources>
+                    <Style TargetType="ComboBox" BasedOn="{StaticResource FilterComboBoxStyle}" />
+                </WrapPanel.Resources>
 
-            <!-- Genre chips (wrap so they never overflow the width) -->
-            <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
-                <TextBlock Text="GENRE" Style="{StaticResource SectionLabelStyle}"
-                           VerticalAlignment="Center" Margin="0,7,12,0" Width="58" />
-                <WrapPanel Orientation="Horizontal">
-                    <Button Content="All" Style="{StaticResource FilterChipStyle}"
-                            Command="{Binding SelectGenreCommand}"
-                            CommandParameter="{x:Static models:StoreGenre.All}"
-                            Tag="{Binding SelectedGenre, Converter={StaticResource Equality},
-                                  ConverterParameter={x:Static models:StoreGenre.All}}" />
-                    <Button Content="Action" Style="{StaticResource FilterChipStyle}"
-                            Command="{Binding SelectGenreCommand}"
-                            CommandParameter="{x:Static models:StoreGenre.Action}"
-                            Tag="{Binding SelectedGenre, Converter={StaticResource Equality},
-                                  ConverterParameter={x:Static models:StoreGenre.Action}}" />
-                    <Button Content="Adventure" Style="{StaticResource FilterChipStyle}"
-                            Command="{Binding SelectGenreCommand}"
-                            CommandParameter="{x:Static models:StoreGenre.Adventure}"
-                            Tag="{Binding SelectedGenre, Converter={StaticResource Equality},
-                                  ConverterParameter={x:Static models:StoreGenre.Adventure}}" />
-                    <Button Content="RPG" Style="{StaticResource FilterChipStyle}"
-                            Command="{Binding SelectGenreCommand}"
-                            CommandParameter="{x:Static models:StoreGenre.Rpg}"
-                            Tag="{Binding SelectedGenre, Converter={StaticResource Equality},
-                                  ConverterParameter={x:Static models:StoreGenre.Rpg}}" />
-                    <Button Content="Strategy" Style="{StaticResource FilterChipStyle}"
-                            Command="{Binding SelectGenreCommand}"
-                            CommandParameter="{x:Static models:StoreGenre.Strategy}"
-                            Tag="{Binding SelectedGenre, Converter={StaticResource Equality},
-                                  ConverterParameter={x:Static models:StoreGenre.Strategy}}" />
-                    <Button Content="Simulation" Style="{StaticResource FilterChipStyle}"
-                            Command="{Binding SelectGenreCommand}"
-                            CommandParameter="{x:Static models:StoreGenre.Simulation}"
-                            Tag="{Binding SelectedGenre, Converter={StaticResource Equality},
-                                  ConverterParameter={x:Static models:StoreGenre.Simulation}}" />
-                    <Button Content="Indie" Style="{StaticResource FilterChipStyle}"
-                            Command="{Binding SelectGenreCommand}"
-                            CommandParameter="{x:Static models:StoreGenre.Indie}"
-                            Tag="{Binding SelectedGenre, Converter={StaticResource Equality},
-                                  ConverterParameter={x:Static models:StoreGenre.Indie}}" />
-                    <Button Content="Casual" Style="{StaticResource FilterChipStyle}"
-                            Command="{Binding SelectGenreCommand}"
-                            CommandParameter="{x:Static models:StoreGenre.Casual}"
-                            Tag="{Binding SelectedGenre, Converter={StaticResource Equality},
-                                  ConverterParameter={x:Static models:StoreGenre.Casual}}" />
-                    <Button Content="Racing" Style="{StaticResource FilterChipStyle}"
-                            Command="{Binding SelectGenreCommand}"
-                            CommandParameter="{x:Static models:StoreGenre.Racing}"
-                            Tag="{Binding SelectedGenre, Converter={StaticResource Equality},
-                                  ConverterParameter={x:Static models:StoreGenre.Racing}}" />
-                    <Button Content="Sports" Style="{StaticResource FilterChipStyle}"
-                            Command="{Binding SelectGenreCommand}"
-                            CommandParameter="{x:Static models:StoreGenre.Sports}"
-                            Tag="{Binding SelectedGenre, Converter={StaticResource Equality},
-                                  ConverterParameter={x:Static models:StoreGenre.Sports}}" />
-                    <Button Content="MMO" Style="{StaticResource FilterChipStyle}"
-                            Command="{Binding SelectGenreCommand}"
-                            CommandParameter="{x:Static models:StoreGenre.MassivelyMultiplayer}"
-                            Tag="{Binding SelectedGenre, Converter={StaticResource Equality},
-                                  ConverterParameter={x:Static models:StoreGenre.MassivelyMultiplayer}}" />
-                </WrapPanel>
-            </StackPanel>
+                <StackPanel Margin="0,0,14,10">
+                    <TextBlock Text="CO-OP" Style="{StaticResource FilterCaptionStyle}" />
+                    <ComboBox Width="150" ItemsSource="{Binding CoopOptions}"
+                              SelectedItem="{Binding SelectedCoopOption}" DisplayMemberPath="Label" />
+                </StackPanel>
+
+                <StackPanel Margin="0,0,14,10">
+                    <TextBlock Text="GENRE" Style="{StaticResource FilterCaptionStyle}" />
+                    <ComboBox Width="155" ItemsSource="{Binding GenreOptions}"
+                              SelectedItem="{Binding SelectedGenreOption}" DisplayMemberPath="Label" />
+                </StackPanel>
+
+                <StackPanel Margin="0,0,14,10">
+                    <TextBlock Text="SUBGENRE" Style="{StaticResource FilterCaptionStyle}" />
+                    <ComboBox Width="180" ItemsSource="{Binding SubgenreOptions}"
+                              SelectedItem="{Binding SelectedSubgenreOption}" DisplayMemberPath="Label"
+                              IsEnabled="{Binding IsSubgenreEnabled}" />
+                </StackPanel>
+
+                <StackPanel Margin="0,0,14,10">
+                    <TextBlock Text="VISUAL STYLE" Style="{StaticResource FilterCaptionStyle}" />
+                    <ComboBox Width="165" ItemsSource="{Binding VisualOptions}"
+                              SelectedItem="{Binding SelectedVisualOption}" DisplayMemberPath="Label" />
+                </StackPanel>
+
+                <StackPanel Margin="0,0,14,10">
+                    <TextBlock Text="SORT BY" Style="{StaticResource FilterCaptionStyle}" />
+                    <ComboBox Width="150" ItemsSource="{Binding SortOptions}"
+                              SelectedItem="{Binding SelectedSortOption}" DisplayMemberPath="Label" />
+                </StackPanel>
+            </WrapPanel>
         </StackPanel>
 
         <!-- ===================== Responsive results grid ===================== -->
@@ -275,31 +196,48 @@
                                     </Image.Clip>
                                 </Image>
 
-                                <!-- Placeholder when no capsule is available -->
+                                <!-- Placeholder when every cover source has failed. The title
+                                     still shows in the caption below, so this stays blank. -->
                                 <Border CornerRadius="6" Background="{StaticResource SurfaceAltBrush}"
                                         Visibility="{Binding HasCover, Converter={StaticResource InverseBoolToVis}}" />
 
-                                <!-- Legibility gradient behind the caption (over art only) -->
-                                <Border VerticalAlignment="Bottom" Height="96" CornerRadius="0,0,6,6"
-                                        Visibility="{Binding HasCover, Converter={StaticResource BoolToVis}}">
+                                <!-- Legibility gradient behind the caption -->
+                                <Border VerticalAlignment="Bottom" Height="104" CornerRadius="0,0,6,6">
                                     <Border.Background>
                                         <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
                                             <GradientStop Color="#00101418" Offset="0" />
-                                            <GradientStop Color="#E6101418" Offset="0.75" />
+                                            <GradientStop Color="#D9101418" Offset="0.55" />
                                             <GradientStop Color="#F2101418" Offset="1" />
                                         </LinearGradientBrush>
                                     </Border.Background>
                                 </Border>
 
-                                <!-- Caption: title + review/release -->
+                                <!-- Caption: title + review score / release date -->
                                 <StackPanel VerticalAlignment="Bottom" Margin="11,0,11,10">
                                     <TextBlock Text="{Binding Title}" FontSize="13" FontWeight="SemiBold"
                                                Foreground="{StaticResource TextPrimaryBrush}"
                                                TextTrimming="CharacterEllipsis" />
-                                    <TextBlock Text="{Binding Meta}" FontSize="10.5" Margin="0,2,0,0"
-                                               Foreground="{StaticResource TextSecondaryBrush}"
-                                               TextTrimming="CharacterEllipsis"
-                                               Visibility="{Binding HasMeta, Converter={StaticResource BoolToVis}}" />
+                                    <Grid Margin="0,4,0,0">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+
+                                        <!-- Review score, with a coloured sentiment dot -->
+                                        <StackPanel Grid.Column="0" Orientation="Horizontal"
+                                                    Visibility="{Binding HasReview, Converter={StaticResource BoolToVis}}">
+                                            <Ellipse Width="7" Height="7" VerticalAlignment="Center" Margin="0,0,5,0"
+                                                     Fill="{Binding ReviewTone, Converter={StaticResource ReviewBrush}}" />
+                                            <TextBlock Text="{Binding ReviewSummary}" FontSize="10.5"
+                                                       VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
+                                                       Foreground="{StaticResource TextPrimaryBrush}" />
+                                        </StackPanel>
+
+                                        <TextBlock Grid.Column="1" Text="{Binding ReleaseDate}" FontSize="10.5"
+                                                   VerticalAlignment="Center" Margin="8,0,0,0"
+                                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                                   Visibility="{Binding HasReleaseDate, Converter={StaticResource BoolToVis}}" />
+                                    </Grid>
                                 </StackPanel>
 
                                 <!-- Co-op badge (top-left) -->

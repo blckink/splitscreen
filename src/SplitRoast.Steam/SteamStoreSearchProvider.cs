@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Text;
@@ -18,8 +19,8 @@ namespace SplitRoast.Steam;
 /// (<c>store.steampowered.com/search/results</c> with <c>infinite=1&amp;json=1</c>) -
 /// the same no-API-key JSON feed the store website uses for its infinite scroll.
 /// We map our filters onto Steam's own query parameters (<c>category2</c> for the
-/// co-op type, <c>tags</c> for the genre, <c>sort_by</c> for ordering) and parse the
-/// returned result rows. Every failure path returns
+/// co-op type, <c>tags</c> for genre / subgenre / visual style, <c>sort_by</c> for
+/// ordering) and parse the returned result rows. Every failure path returns
 /// <see cref="StoreSearchResult.Empty"/>; this must never throw into the UI.
 /// </summary>
 public sealed class SteamStoreSearchProvider : IStoreDiscoveryProvider
@@ -41,6 +42,8 @@ public sealed class SteamStoreSearchProvider : IStoreDiscoveryProvider
     private static readonly Regex ReleasedRegex = new("search_released[^\"]*\">\\s*([^<]*?)\\s*<", RegexOptions.Singleline | RegexOptions.Compiled);
     private static readonly Regex ReviewRegex = new("search_review_summary [^\"]*\"[^>]*data-tooltip-html=\"([^\"]*)\"", RegexOptions.Singleline | RegexOptions.Compiled);
     private static readonly Regex PriceRegex = new("data-price-final=\"(\\d+)\"", RegexOptions.Compiled);
+    private static readonly Regex CapsuleRegex = new("<img[^>]+src=\"([^\"]+)\"", RegexOptions.Compiled);
+    private static readonly Regex TagRegex = new("<[^>]+>", RegexOptions.Compiled);
 
     public SteamStoreSearchProvider()
     {
@@ -68,10 +71,11 @@ public sealed class SteamStoreSearchProvider : IStoreDiscoveryProvider
         var sb = new StringBuilder("https://store.steampowered.com/search/results/?infinite=1&json=1&cc=us&l=english");
         sb.Append("&category2=").Append(CategoryId(query.Coop));
 
-        int genreTag = GenreTag(query.Genre);
-        if (genreTag > 0)
+        IEnumerable<int> tags = query.Tags.Where(t => t > 0).Distinct();
+        string tagList = string.Join(",", tags);
+        if (tagList.Length > 0)
         {
-            sb.Append("&tags=").Append(genreTag);
+            sb.Append("&tags=").Append(tagList);
         }
 
         string? sort = SortBy(query.Sort);
@@ -156,7 +160,9 @@ public sealed class SteamStoreSearchProvider : IStoreDiscoveryProvider
                 ReleaseDate = NullIfEmpty(Decode(Group(ReleasedRegex, inner))),
                 ReviewSummary = ReviewSummary(inner),
                 PriceText = PriceText(inner),
-                CoverUrl = $"{CdnBase}/{appId}/library_600x900.jpg"
+                CoverUrl = $"{CdnBase}/{appId}/library_600x900.jpg",
+                HeaderUrl = $"{CdnBase}/{appId}/header.jpg",
+                CapsuleUrl = NullIfEmpty(Decode(Group(CapsuleRegex, inner)))
             });
         }
 
@@ -165,17 +171,23 @@ public sealed class SteamStoreSearchProvider : IStoreDiscoveryProvider
 
     private static string? ReviewSummary(string inner)
     {
-        string tooltip = Group(ReviewRegex, inner);
-        if (string.IsNullOrEmpty(tooltip))
+        string raw = Group(ReviewRegex, inner);
+        if (string.IsNullOrEmpty(raw))
         {
             return null;
         }
 
-        // The tooltip is "<summary><br>NN% of the ... reviews ...". We only want the
-        // leading summary phrase.
-        int br = tooltip.IndexOf("<br>", StringComparison.OrdinalIgnoreCase);
-        string summary = br >= 0 ? tooltip[..br] : tooltip;
-        return NullIfEmpty(Decode(summary).Trim());
+        // The attribute is HTML-encoded ("Very Positive&lt;br&gt;91% of ..."). Decode
+        // first, keep only the leading summary phrase (before the line break), then
+        // strip any stray tags so no markup ever reaches the UI.
+        string decoded = WebUtility.HtmlDecode(raw);
+        int br = decoded.IndexOf("<br", StringComparison.OrdinalIgnoreCase);
+        string summary = br >= 0 ? decoded[..br] : decoded;
+        summary = TagRegex.Replace(summary, string.Empty).Trim();
+
+        // Anything longer than the longest rating phrase ("Overwhelmingly Positive")
+        // is the "Need more reviews" notice rather than a score - skip it.
+        return summary.Length is > 0 and <= 26 ? summary : null;
     }
 
     private static string? PriceText(string inner)
@@ -210,22 +222,6 @@ public sealed class SteamStoreSearchProvider : IStoreDiscoveryProvider
         StoreCoopFilter.LanCoop => 39,
         StoreCoopFilter.SplitScreen => 24,
         _ => 9 // AnyCoop
-    };
-
-    // Well-known, stable Steam genre tag ids. 0 means "no genre filter".
-    private static int GenreTag(StoreGenre genre) => genre switch
-    {
-        StoreGenre.Action => 19,
-        StoreGenre.Adventure => 21,
-        StoreGenre.Rpg => 122,
-        StoreGenre.Strategy => 9,
-        StoreGenre.Simulation => 599,
-        StoreGenre.Indie => 492,
-        StoreGenre.Casual => 597,
-        StoreGenre.Racing => 699,
-        StoreGenre.Sports => 701,
-        StoreGenre.MassivelyMultiplayer => 128,
-        _ => 0 // All
     };
 
     private static string? SortBy(StoreSortOrder sort) => sort switch

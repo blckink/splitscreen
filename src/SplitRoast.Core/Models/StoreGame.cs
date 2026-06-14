@@ -26,9 +26,16 @@ public sealed class StoreGame
     /// <summary>
     /// Vertical library capsule (600x900) on the public Steam CDN, used as the tile
     /// cover so Discover tiles match the installed-library grid. Populated by the
-    /// provider.
+    /// provider. Some (usually tiny) titles have no vertical capsule - see
+    /// <see cref="HeaderUrl"/> and <see cref="CapsuleUrl"/> for fallbacks.
     /// </summary>
     public required string CoverUrl { get; init; }
+
+    /// <summary>Wide header image (460x215) - fallback cover when no vertical capsule exists.</summary>
+    public string? HeaderUrl { get; init; }
+
+    /// <summary>The small store capsule from the search row itself (always present) - last-resort cover.</summary>
+    public string? CapsuleUrl { get; init; }
 
     /// <summary>The store page on the web (browser fallback).</summary>
     public string StorePageUrl => $"https://store.steampowered.com/app/{AppId}";
