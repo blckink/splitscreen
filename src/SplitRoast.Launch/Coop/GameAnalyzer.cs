@@ -16,6 +16,7 @@ public static class GameAnalyzer
         EngineType engine = DetectEngine(installDir);
         (string? api64, string? api32) = FindSteamApi(installDir);
         bool hasSteamDrm = SteamStubDetector.IsSteamDrmProtected(exePath);
+        OnlineSdk sdks = DetectOnlineSdks(installDir, api64, api32);
 
         return new CoopRecipe
         {
@@ -25,6 +26,7 @@ public static class GameAnalyzer
             Engine = engine,
             SteamApi64RelPath = api64,
             SteamApi32RelPath = api32,
+            DetectedSdks = sdks,
             HasSteamDrm = hasSteamDrm
         };
     }
@@ -68,6 +70,49 @@ public static class GameAnalyzer
         string? api64 = FindFirstRelative(installDir, "steam_api64.dll");
         string? api32 = FindFirstRelative(installDir, "steam_api.dll");
         return (api64, api32);
+    }
+
+    /// <summary>
+    /// Detects which online/multiplayer SDKs the game ships, from the well-known
+    /// runtime DLL names each one drops next to the game. This is the signal that
+    /// tells the engine which network emulator a second instance needs - no per-game
+    /// handler required.
+    /// </summary>
+    private static OnlineSdk DetectOnlineSdks(string installDir, string? steamApi64, string? steamApi32)
+    {
+        OnlineSdk sdks = OnlineSdk.None;
+
+        if (steamApi64 is not null || steamApi32 is not null)
+        {
+            sdks |= OnlineSdk.Steam;
+        }
+
+        // Epic Online Services ships EOSSDK-Win64-Shipping.dll / EOSSDK-Win32-Shipping.dll.
+        if (ContainsAnyFile(installDir, "EOSSDK-Win64-Shipping.dll", "EOSSDK-Win32-Shipping.dll"))
+        {
+            sdks |= OnlineSdk.Epic;
+        }
+
+        // GOG Galaxy ships Galaxy64.dll / Galaxy.dll (the peer/identity SDK).
+        if (ContainsAnyFile(installDir, "Galaxy64.dll", "Galaxy.dll"))
+        {
+            sdks |= OnlineSdk.Galaxy;
+        }
+
+        return sdks;
+    }
+
+    private static bool ContainsAnyFile(string root, params string[] fileNames)
+    {
+        foreach (string name in fileNames)
+        {
+            if (FindFirstRelative(root, name) is not null)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private static string? FindFirstRelative(string root, string fileName)

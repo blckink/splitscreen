@@ -160,8 +160,18 @@ public sealed class RealLaunchEngine : ILaunchEngine
         bool emulatorReady = wantsEmulator && GoldbergLocator.CanServe(recipe!);
 
         diag.Log($"Analysis: exe='{exePath ?? "(none)"}', arch={arch}, engine={recipe?.Engine.ToString() ?? "n/a"}, " +
-                 $"usesSteam={recipe?.UsesSteam == true}, steamDrm={recipe?.HasSteamDrm == true}, " +
+                 $"sdks={recipe?.DetectedSdks.ToString() ?? "n/a"}, steamDrm={recipe?.HasSteamDrm == true}, " +
                  $"wantsEmulator={wantsEmulator}, emulatorReady={emulatorReady}.");
+
+        // Surface online SDKs we detect but can't yet emulate, so the diagnostics
+        // explain why such a game may not pair up rather than failing silently.
+        if (recipe is not null && (recipe.UsesEpic || recipe.UsesGalaxy))
+        {
+            diag.Log($"Note: detected {(recipe.UsesEpic ? "Epic Online Services" : "")}" +
+                     $"{(recipe.UsesEpic && recipe.UsesGalaxy ? " + " : "")}" +
+                     $"{(recipe.UsesGalaxy ? "GOG Galaxy" : "")} SDK. A matching network emulator " +
+                     "is not bundled yet, so a shared co-op session may be unavailable for this title.");
+        }
 
         // Steam-DRM (SteamStub) games relaunch themselves through Steam when the
         // client isn't running - the copy we start exits and a stray fullscreen

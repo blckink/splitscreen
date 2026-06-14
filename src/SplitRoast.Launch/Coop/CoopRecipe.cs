@@ -27,6 +27,14 @@ public sealed class CoopRecipe
     public string? SteamApi32RelPath { get; init; }
 
     /// <summary>
+    /// The online/multiplayer SDK(s) detected in the install folder. Decides which
+    /// network emulator a second local instance needs (Steam-&gt;Goldberg,
+    /// Epic-&gt;EOS emu, Galaxy-&gt;Galaxy emu). Steam is also implied by the
+    /// steam_api paths above for backwards compatibility.
+    /// </summary>
+    public OnlineSdk DetectedSdks { get; init; } = OnlineSdk.None;
+
+    /// <summary>
     /// True if the executable is wrapped with Steam DRM (the SteamStub). These
     /// games need the Steam client running before launch, otherwise the stub
     /// relaunches them through Steam and the copy we started exits.
@@ -35,6 +43,12 @@ public sealed class CoopRecipe
 
     /// <summary>True if the game ships a Steam API DLL (i.e. it is a Steam game).</summary>
     public bool UsesSteam => SteamApi64RelPath is not null || SteamApi32RelPath is not null;
+
+    /// <summary>True if the game ships the Epic Online Services SDK.</summary>
+    public bool UsesEpic => DetectedSdks.HasFlag(OnlineSdk.Epic);
+
+    /// <summary>True if the game ships the GOG Galaxy SDK.</summary>
+    public bool UsesGalaxy => DetectedSdks.HasFlag(OnlineSdk.Galaxy);
 
     /// <summary>The executable path relative to the install dir.</summary>
     public string ExeRelativePath => Path.GetRelativePath(SourceInstallDir, SourceExePath);
